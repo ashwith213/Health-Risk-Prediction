@@ -47,7 +47,7 @@ html, body, [class*="css"] {
 
 .subtitle {
     font-size: 17px;
-    color: #52667a;
+    color: #2081e3;
     margin-bottom: 25px;
 }
 
@@ -116,7 +116,7 @@ html, body, [class*="css"] {
 
 .metric-label {
     font-size: 13px;
-    color: #65788a;
+    color: #2081e3;
 }
 
 /* Button */
@@ -209,8 +209,6 @@ def train_model():
     # Random Forest
     model = RandomForestClassifier(
         n_estimators=301,
-        max_depth=7,
-        min_samples_split=5,
         random_state=42
     )
 
