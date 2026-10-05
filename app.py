@@ -37,6 +37,20 @@ st.markdown("""
     border-radius: 0 0 20px 20px;
     box-shadow: 0 7px 22px rgba(16,42,67,0.20);
 }
+/* Hide Streamlit toolbar */
+[data-testid="stToolbar"] {
+    display: none !important;
+}
+
+/* Hide Streamlit header */
+header[data-testid="stHeader"] {
+    display: none !important;
+}
+
+/* Remove extra top space */
+.block-container {
+    padding-top: 1rem !important;
+}
 .sticky-title {
     color: #ffffff !important;
     font-size: 38px !important;
@@ -234,6 +248,7 @@ section[data-testid="stSidebar"] * { color: #ffffff !important; }
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 # ---------------------------------------------------------
 # HEADER
