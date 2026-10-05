@@ -1,227 +1,272 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
-
-# =========================================================
-# PAGE CONFIGURATION
-# =========================================================
-
+# ---------------------------------------------------------
+# PAGE CONFIG
+# ---------------------------------------------------------
 st.set_page_config(
     page_title="Health Risk Prediction",
     page_icon="🩺",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-
-# =========================================================
-# CUSTOM CSS (FIXED ACCESSIBILITY & VISIBILITY)
-# =========================================================
-
+# ---------------------------------------------------------
+# CUSTOM CSS
+# ---------------------------------------------------------
 st.markdown("""
 <style>
+.stApp { background: #f5f7fb; }
+.block-container { max-width: 1400px; padding-top: 0.8rem; padding-bottom: 3rem; }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
+/* Sticky header */
+.sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    background: linear-gradient(135deg, #102a43 0%, #176b87 55%, #1f8a9e 100%);
+    padding: 22px 30px;
+    margin: -10px -10px 25px -10px;
+    border-radius: 0 0 20px 20px;
+    box-shadow: 0 7px 22px rgba(16,42,67,0.20);
 }
-
-.stApp {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+.sticky-title {
+    color: #ffffff !important;
+    font-size: 38px !important;
+    font-weight: 800 !important;
+    line-height: 1.15 !important;
+    margin: 0 !important;
 }
-
-/* Main title */
-.main-title {
-    font-size: 40px;
-    font-weight: 800;
-    color: #0f172a;
-    margin-bottom: 4px;
+.sticky-subtitle {
+    color: #eaf8fb !important;
+    font-size: 17px !important;
+    line-height: 1.5 !important;
+    margin: 7px 0 0 0 !important;
 }
-
-.subtitle {
-    font-size: 16px;
-    font-weight: 500;
-    color: #0284c7;
-    margin-bottom: 25px;
-}
-
-/* Form Section Headers */
-h4 {
-    color: #0369a1 !important;
-    font-weight: 700 !important;
-    font-size: 18px !important;
-    margin-bottom: 12px !important;
-}
-
-/* Cards */
-.card {
-    background: #ffffff;
-    padding: 22px;
-    border-radius: 16px;
-    border: 1px solid #cbd5e1;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    margin-bottom: 18px;
-}
-
-.card-title {
-    font-size: 22px;
+.badge {
+    display: inline-block;
+    color: white !important;
+    background: rgba(255,255,255,0.16);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-size: 12px;
     font-weight: 700;
-    color: #0f172a;
-    margin-bottom: 15px;
+    margin-bottom: 9px;
 }
 
-/* Prediction result */
-.result-card {
-    padding: 28px;
-    border-radius: 18px;
-    text-align: center;
-    margin-top: 20px;
-    margin-bottom: 20px;
+/* Section headings */
+.section-box {
+    background: #ffffff;
+    padding: 16px 20px;
+    border-left: 6px solid #176b87;
+    border-radius: 12px;
+    margin: 27px 0 15px 0;
+    box-shadow: 0 4px 12px rgba(16,42,67,0.08);
 }
-
-.healthy {
-    background: #f0fdf4;
-    border: 2px solid #22c55e;
+.section-title {
+    color: #102a43 !important;
+    font-size: 25px !important;
+    font-weight: 800 !important;
+    line-height: 1.25 !important;
+    margin: 0 !important;
 }
-
-.healthy .result-title {
-    color: #15803d;
-}
-
-.healthy .result-score {
-    color: #166534;
-}
-
-.risk {
-    background: #fef2f2;
-    border: 2px solid #ef4444;
-}
-
-.risk .result-title {
-    color: #b91c1c;
-}
-
-.risk .result-score {
-    color: #991b1b;
-}
-
-.result-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin-bottom: 8px;
-}
-
-.result-score {
-    font-size: 18px;
-    font-weight: 600;
+.section-subtitle {
+    color: #486581 !important;
+    font-size: 14px !important;
+    margin: 5px 0 0 0 !important;
 }
 
 /* Metric cards */
 .metric-card {
     background: #ffffff;
-    padding: 18px;
-    border-radius: 14px;
-    border: 1px solid #cbd5e1;
-    text-align: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    border: 1px solid #d9e2ec;
+    border-radius: 17px;
+    padding: 20px 18px;
+    min-height: 112px;
+    box-shadow: 0 5px 18px rgba(16,42,67,0.07);
 }
-
-.metric-number {
-    font-size: 26px;
-    font-weight: 800;
-    color: #0369a1;
+.metric-value {
+    color: #102a43 !important;
+    font-size: 29px !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
 }
-
 .metric-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #475569;
+    color: #627d98 !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    margin-top: 7px !important;
 }
 
-/* Button */
+/* Inputs */
+.input-card {
+    background: #ffffff;
+    border: 1px solid #d9e2ec;
+    border-radius: 17px;
+    padding: 17px 20px 5px 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 5px 18px rgba(16,42,67,0.06);
+}
+.input-heading {
+    color: #102a43 !important;
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+}
+.input-help {
+    color: #627d98 !important;
+    font-size: 13px !important;
+    margin: 4px 0 8px 0 !important;
+}
+label, .stSelectbox label, .stNumberInput label, .stSlider label {
+    color: #243b53 !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+}
+
+/* Light input boxes with dark, highly visible values */
+.stNumberInput input {
+    color: #102a43 !important;
+    -webkit-text-fill-color: #102a43 !important;
+    background-color: #ffffff !important;
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    caret-color: #102a43 !important;
+    border: 2px solid #bcccdc !important;
+    border-radius: 10px !important;
+}
+
+.stNumberInput input::placeholder {
+    color: #829ab1 !important;
+    -webkit-text-fill-color: #829ab1 !important;
+}
+
+.stSelectbox div[data-baseweb="select"] > div {
+    color: #102a43 !important;
+    background-color: #ffffff !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    border: 2px solid #bcccdc !important;
+    border-radius: 10px !important;
+}
+
+.stSelectbox div[data-baseweb="select"] span {
+    color: #102a43 !important;
+}
+
+.stSelectbox svg {
+    fill: #486581 !important;
+}
+
+.stNumberInput button {
+    color: #102a43 !important;
+    background-color: #f0f4f8 !important;
+}
+
+.stNumberInput button svg {
+    fill: #102a43 !important;
+}
+
+/* Predict button */
 .stButton > button {
     width: 100%;
-    border-radius: 12px;
-    height: 50px;
-    font-size: 17px;
-    font-weight: 700;
-    background: linear-gradient(90deg, #0284c7, #0369a1);
-    color: #ffffff;
-    border: none;
-    transition: 0.2s;
+    min-height: 54px;
+    border-radius: 13px;
+    border: 0;
+    background: linear-gradient(90deg, #0f6b8a, #178ca3);
+    color: #ffffff !important;
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    box-shadow: 0 7px 18px rgba(15,107,138,0.25);
 }
-
 .stButton > button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(2, 132, 199, 0.3);
+    background: linear-gradient(90deg, #0b5d78, #117d91);
+    color: #ffffff !important;
 }
 
-/* Sidebar Styling Fixes */
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+/* Result */
+.result-card {
+    background: linear-gradient(135deg, #102a43, #176b87);
+    border-radius: 20px;
+    padding: 25px;
+    margin-top: 18px;
+    box-shadow: 0 10px 28px rgba(16,42,67,0.18);
+}
+.result-title {
+    color: #ffffff !important;
+    font-size: 25px !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+}
+.result-text {
+    color: #eaf8fb !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    margin-top: 6px !important;
 }
 
-section[data-testid="stSidebar"] h2, 
-section[data-testid="stSidebar"] h3, 
-section[data-testid="stSidebar"] p, 
-section[data-testid="stSidebar"] span,
-section[data-testid="stSidebar"] div {
-    color: #f1f5f9 !important;
+/* Sidebar */
+section[data-testid="stSidebar"] { background: #102a43; }
+section[data-testid="stSidebar"] * { color: #ffffff !important; }
+.sidebar-title { color: #ffffff !important; font-size: 22px !important; font-weight: 800 !important; }
+.sidebar-text { color: #d9eaf2 !important; font-size: 14px !important; line-height: 1.55 !important; }
+
+.footer {
+    text-align: center;
+    color: #627d98 !important;
+    font-size: 12px !important;
+    padding: 28px 0 5px 0;
 }
 
-/* Disclaimer */
-.disclaimer {
-    background: #fffbeb;
-    border-left: 5px solid #f59e0b;
-    padding: 15px;
-    border-radius: 10px;
-    color: #78350f;
-    margin-top: 20px;
-    font-size: 14px;
+@media (max-width: 900px) {
+    .sticky-title { font-size: 29px !important; }
+    .sticky-subtitle { font-size: 14px !important; }
+    .section-title { font-size: 22px !important; }
+    .block-container { padding-left: 1rem; padding-right: 1rem; }
 }
-
 </style>
 """, unsafe_allow_html=True)
 
+# ---------------------------------------------------------
+# HEADER
+# ---------------------------------------------------------
+st.markdown("""
+<div class="sticky-header">
+    <div class="badge">🤖 SUPERVISED MACHINE LEARNING • HEALTH ANALYTICS</div>
+    <div class="sticky-title">🩺 Health Risk Prediction</div>
+    <div class="sticky-subtitle">
+        AI-powered health classification using health, lifestyle and clinical indicators.
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-# =========================================================
-# LOAD DATA
-# =========================================================
-
+# ---------------------------------------------------------
+# LOAD DATA AND TRAIN MODEL
+# ---------------------------------------------------------
 @st.cache_data
 def load_data():
     return pd.read_csv("novagen_dataset.csv")
 
-
 @st.cache_resource
-def train_model():
-    df = load_data().copy()
+def train_model(df):
+    data = df.copy()
+    target = "Target"
 
-    # Remove rows with missing target
-    df = df.dropna(subset=["Target"])
+    X = data.drop(columns=[target])
+    y = data[target]
 
-    X = df.drop(columns=["Target"])
-    y = df["Target"]
-
-    # Convert categorical columns to numeric
+    # Convert categorical columns into numeric columns
     X = pd.get_dummies(X, drop_first=False)
-
-    # Save feature columns
     feature_columns = X.columns.tolist()
 
-    # Fill missing values
-    X = X.replace([np.inf, -np.inf], np.nan)
-    X = X.fillna(X.median(numeric_only=True))
-    X = X.fillna(0)
-
-    # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
@@ -230,290 +275,243 @@ def train_model():
         stratify=y
     )
 
-    # Scaling
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # Random Forest
+    # Random Forest WITHOUT max_depth restriction
     model = RandomForestClassifier(
         n_estimators=301,
+        min_samples_split=5,
         random_state=42
     )
+
     model.fit(X_train_scaled, y_train)
 
-    # Test accuracy
-    predictions = model.predict(X_test_scaled)
-    accuracy = accuracy_score(y_test, predictions)
+    y_pred = model.predict(X_test_scaled)
+    accuracy = accuracy_score(y_test, y_pred)
 
-    return model, scaler, feature_columns, accuracy
-
-
-# =========================================================
-# HEADER
-# =========================================================
-
-st.markdown(
-    '<div class="main-title">🩺 Health Risk Prediction</div>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    '<div class="subtitle">'
-    'AI-powered health classification using Supervised Machine Learning'
-    '</div>',
-    unsafe_allow_html=True
-)
-
-
-# =========================================================
-# SIDEBAR
-# =========================================================
-
-with st.sidebar:
-    st.markdown("## 🩺 Health AI")
-    st.markdown("---")
-    st.markdown("""
-    ### About the Project
-    This application uses a **Random Forest classifier**
-    to predict a health-risk category from selected
-    health and lifestyle indicators.
-    """)
-    st.markdown("---")
-    st.markdown("### Model Configuration")
-    st.markdown("""
-    🌲 **Random Forest**  
-    • **Trees:** 301  
-    • **Max Depth:** 7  
-    • **Min Split:** 5
-    """)
-    st.markdown("---")
-    st.info(
-        "This application is for educational purposes only "
-        "and should not be used for medical diagnosis."
-    )
-
-
-# =========================================================
-# LOAD MODEL
-# =========================================================
+    return model, scaler, feature_columns, accuracy, len(X_test)
 
 try:
-    model, scaler, feature_columns, model_accuracy = train_model()
+    df = load_data()
+    model, scaler, feature_columns, accuracy, test_samples = train_model(df)
 except Exception as e:
-    st.error(
-        "Unable to load the model. "
-        "Please make sure `novagen_dataset.csv` is present "
-        "in the same folder as `app.py`."
-    )
+    st.error("Unable to load the model or dataset.")
+    st.info("Make sure novagen_dataset.csv is in the same GitHub repository as app.py.")
     st.stop()
 
+# ---------------------------------------------------------
+# SIDEBAR
+# ---------------------------------------------------------
+with st.sidebar:
+    st.markdown('<div class="sidebar-title">🩺 Health Risk AI</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'''<div class="sidebar-text">
+        <b>Purpose</b><br>
+        Classify health outcomes using health, lifestyle and medical-history indicators.
+        <br><br>
+        <b>Model</b><br>
+        Random Forest Classifier<br>
+        301 trees • no max-depth restriction
+        <br><br>
+        <b>Dataset</b><br>
+        {len(df):,} records
+        <br><br>
+        <b>Important</b><br>
+        This application is an educational machine-learning demonstration and is not a medical diagnosis.
+        </div>''',
+        unsafe_allow_html=True
+    )
 
-# =========================================================
-# MODEL METRICS
-# =========================================================
-
-st.markdown("### 📊 Model Performance")
+# ---------------------------------------------------------
+# MODEL PERFORMANCE
+# ---------------------------------------------------------
+st.markdown("""
+<div class="section-box">
+    <div class="section-title">📊 Model Performance</div>
+    <div class="section-subtitle">Random Forest performance on the held-out test dataset.</div>
+</div>
+""", unsafe_allow_html=True)
 
 m1, m2, m3, m4 = st.columns(4)
 
 with m1:
-    st.markdown(
-        f"""
-        <div class="metric-card">
-            <div class="metric-number">{model_accuracy*100:.2f}%</div>
-            <div class="metric-label">Test Accuracy</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown(f'''<div class="metric-card">
+        <div class="metric-value">{accuracy*100:.2f}%</div>
+        <div class="metric-label">TEST ACCURACY</div>
+    </div>''', unsafe_allow_html=True)
 
 with m2:
-    st.markdown(
-        """
-        <div class="metric-card">
-            <div class="metric-number">301</div>
-            <div class="metric-label">Random Forest Trees</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown('''<div class="metric-card">
+        <div class="metric-value">301</div>
+        <div class="metric-label">RANDOM FOREST TREES</div>
+    </div>''', unsafe_allow_html=True)
 
 with m3:
-    st.markdown(
-        """
-        <div class="metric-card">
-            <div class="metric-number">7</div>
-            <div class="metric-label">Maximum Tree Depth</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown(f'''<div class="metric-card">
+        <div class="metric-value">{test_samples:,}</div>
+        <div class="metric-label">TEST SAMPLES</div>
+    </div>''', unsafe_allow_html=True)
 
-with m4:
-    st.markdown(
-        """
-        <div class="metric-card">
-            <div class="metric-number">2,865</div>
-            <div class="metric-label">Test Samples</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-
-# =========================================================
+# ---------------------------------------------------------
 # INPUT SECTION
-# =========================================================
+# ---------------------------------------------------------
+st.markdown("""
+<div class="section-box">
+    <div class="section-title">🧑‍⚕️ Enter Health Information</div>
+    <div class="section-subtitle">Enter the individual's health and lifestyle information below.</div>
+</div>
+""", unsafe_allow_html=True)
 
-st.markdown(
-    '<div class="card-title">🧑‍⚕️ Enter Health Information</div>',
-    unsafe_allow_html=True
-)
+# Basic information
+st.markdown('''<div class="input-card">
+    <div class="input-heading">👤 Basic Information</div>
+    <div class="input-help">Age, BMI and lifestyle-related information</div>
+</div>''', unsafe_allow_html=True)
 
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown("#### 👤 Basic Information")
-    age = st.number_input("Age", min_value=1, max_value=100, value=25)
+c1, c2, c3 = st.columns(3)
+with c1:
+    age = st.number_input("Age", min_value=1, max_value=120, value=25)
+with c2:
     bmi = st.number_input("BMI", min_value=10.0, max_value=60.0, value=22.5, step=0.1)
-    blood_pressure = st.number_input("Blood Pressure", min_value=70, max_value=220, value=120)
-    cholesterol = st.number_input("Cholesterol", min_value=80, max_value=400, value=180)
-    glucose = st.number_input("Glucose Level", min_value=50, max_value=400, value=100)
-
-with col2:
-    st.markdown("#### ❤️ Health & Lifestyle")
-    heart_rate = st.number_input("Heart Rate", min_value=40, max_value=200, value=72)
-    sleep_hours = st.slider("Sleep Hours", min_value=0.0, max_value=15.0, value=7.0, step=0.5)
-    exercise_hours = st.slider("Exercise Hours / Day", min_value=0.0, max_value=8.0, value=1.0, step=0.5)
-    water_intake = st.slider("Water Intake (Litres)", min_value=0.0, max_value=8.0, value=2.0, step=0.1)
-    stress_level = st.slider("Stress Level", min_value=1, max_value=10, value=5)
-
-with col3:
-    st.markdown("#### 🧠 Behaviour & History")
+with c3:
     smoking = st.selectbox("Smoking", ["No", "Yes"])
-    alcohol = st.selectbox("Alcohol Consumption", ["No", "Yes"])
-    mental_health = st.slider("Mental Health Score", min_value=0, max_value=100, value=70)
-    physical_activity = st.slider("Physical Activity Level", min_value=0, max_value=100, value=60)
+
+c1, c2, c3 = st.columns(3)
+with c1:
+    alcohol = st.selectbox("Alcohol", ["No", "Yes"])
+with c2:
+    diet = st.selectbox("Diet", ["No", "Yes"])
+with c3:
+    mental_health = st.selectbox("Mental Health", ["No", "Yes"])
+
+# Clinical indicators
+st.markdown('''<div class="input-card">
+    <div class="input-heading">❤️ Clinical Indicators</div>
+    <div class="input-help">Enter basic physiological measurements</div>
+</div>''', unsafe_allow_html=True)
+
+c1, c2, c3 = st.columns(3)
+with c1:
+    blood_pressure = st.number_input("Blood Pressure", min_value=50, max_value=250, value=120)
+with c2:
+    cholesterol = st.number_input("Cholesterol", min_value=50, max_value=400, value=180)
+with c3:
+    glucose = st.number_input("Glucose Level", min_value=40, max_value=400, value=100)
+
+c1, c2, c3 = st.columns(3)
+with c1:
+    heart_rate = st.number_input("Heart Rate", min_value=30, max_value=220, value=70)
+with c2:
+    sleep_hours = st.slider("Sleep Hours", 0.0, 14.0, 7.0, 0.5)
+with c3:
+    exercise_hours = st.slider("Exercise Hours", 0.0, 10.0, 2.0, 0.5)
+
+# Lifestyle and history
+st.markdown('''<div class="input-card">
+    <div class="input-heading">🌿 Lifestyle & Medical History</div>
+    <div class="input-help">Select the options that best describe the individual</div>
+</div>''', unsafe_allow_html=True)
+
+c1, c2, c3 = st.columns(3)
+with c1:
+    water_intake = st.slider("Water Intake", 0.0, 200.0, 100.0, 5.0)
+with c2:
+    stress_level = st.slider("Stress Level", 0, 10, 5)
+with c3:
+    physical_activity = st.selectbox("Physical Activity", ["No", "Yes"])
+
+c1, c2, c3 = st.columns(3)
+with c1:
     medical_history = st.selectbox("Medical History", ["No", "Yes"])
-    allergies = st.selectbox("Known Allergies", ["No", "Yes"])
+with c2:
+    allergies = st.selectbox("Allergies", ["No", "Yes"])
+with c3:
+    diet_type = st.selectbox("Diet Type", ["Other", "Vegan", "Vegetarian"])
 
-
-# =========================================================
+# ---------------------------------------------------------
 # PREDICTION
-# =========================================================
-
+# ---------------------------------------------------------
 st.markdown("<br>", unsafe_allow_html=True)
 
-predict_button = st.button("🔍 Predict Health Risk")
+if st.button("🔮  Predict Health Risk", use_container_width=True):
+    input_data = pd.DataFrame([{
+        "Age": age,
+        "BMI": bmi,
+        "Blood_Pressure": blood_pressure,
+        "Cholesterol": cholesterol,
+        "Glucose_Level": glucose,
+        "Heart_Rate": heart_rate,
+        "Sleep_Hours": sleep_hours,
+        "Exercise_Hours": exercise_hours,
+        "Water_Intake": water_intake,
+        "Stress_Level": stress_level,
+        "Smoking": smoking,
+        "Alcohol": alcohol,
+        "Diet": diet,
+        "MentalHealth": mental_health,
+        "PhysicalActivity": physical_activity,
+        "MedicalHistory": medical_history,
+        "Allergies": allergies,
+        "Diet_Type": diet_type,
+    }])
 
-if predict_button:
-    input_data = pd.DataFrame({
-        "Age": [age],
-        "BMI": [bmi],
-        "Blood_Pressure": [blood_pressure],
-        "Cholesterol": [cholesterol],
-        "Glucose_Level": [glucose],
-        "Heart_Rate": [heart_rate],
-        "Sleep_Hours": [sleep_hours],
-        "Exercise_Hours": [exercise_hours],
-        "Water_Intake": [water_intake],
-        "Stress_Level": [stress_level],
-        "Smoking": [1 if smoking == "Yes" else 0],
-        "Alcohol": [1 if alcohol == "Yes" else 0],
-        "MentalHealth": [mental_health],
-        "PhysicalActivity": [physical_activity],
-        "MedicalHistory": [1 if medical_history == "Yes" else 0],
-        "Allergies": [1 if allergies == "Yes" else 0],
-    })
+    input_encoded = pd.get_dummies(input_data, drop_first=False)
+    input_encoded = input_encoded.reindex(columns=feature_columns, fill_value=0)
+    input_scaled = scaler.transform(input_encoded)
 
-    for col in feature_columns:
-        if col not in input_data.columns:
-            input_data[col] = 0
-
-    input_data = input_data[feature_columns]
-    input_data = input_data.fillna(0)
-
-    input_scaled = scaler.transform(input_data)
     prediction = model.predict(input_scaled)[0]
-    probabilities = model.predict_proba(input_scaled)[0]
-    max_probability = max(probabilities)
 
-    if prediction == 0:
-        st.markdown(
-            f"""
-            <div class="result-card healthy">
-                <div class="result-title">🟢 Lower Health Risk Classification</div>
-                <div class="result-score">Model confidence: {max_probability*100:.2f}%</div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+    if hasattr(model, "predict_proba"):
+        probabilities = model.predict_proba(input_scaled)[0]
+        confidence = float(np.max(probabilities)) * 100
     else:
-        st.markdown(
-            f"""
-            <div class="result-card risk">
-                <div class="result-title">🔴 Higher Health Risk Classification</div>
-                <div class="result-score">Model confidence: {max_probability*100:.2f}%</div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        probabilities = None
+        confidence = 0
 
-    st.markdown("### 📈 Prediction Probability")
-    probability_df = pd.DataFrame(
-        {
-            "Class": [str(c) for c in model.classes_],
-            "Probability": probabilities
-        }
-    )
-    st.bar_chart(probability_df.set_index("Class"))
+    # Convert raw model classes into user-friendly health labels.
+    if str(prediction) == "0":
+        result_title = "🟢 Healthy"
+        result_text = "The model classified this individual as Healthy."
+        result_class = "Healthy"
+    else:
+        result_title = "🔴 Unhealthy"
+        result_text = "The model classified this individual as Unhealthy."
+        result_class = "Unhealthy"
 
-    st.markdown("### 📋 Input Summary")
-    summary = pd.DataFrame({
-        "Parameter": [
-            "Age", "BMI", "Blood Pressure", "Cholesterol", "Glucose Level",
-            "Heart Rate", "Sleep Hours", "Exercise Hours", "Water Intake",
-            "Stress Level", "Smoking", "Alcohol", "Mental Health",
-            "Physical Activity", "Medical History", "Allergies"
-        ],
-        "Value": [
-            age, bmi, blood_pressure, cholesterol, glucose,
-            heart_rate, sleep_hours, exercise_hours, water_intake,
-            stress_level, smoking, alcohol, mental_health,
-            physical_activity, medical_history, allergies
-        ]
-    })
-    st.dataframe(summary, use_container_width=True, hide_index=True)
+    st.markdown(f'''<div class="result-card">
+        <div class="result-title">{result_title}</div>
+        <div class="result-text">{result_text}<br>
+        Result: <b>{result_class}</b><br>
+        Model confidence: <b>{confidence:.1f}%</b></div>
+    </div>''', unsafe_allow_html=True)
 
+    if probabilities is not None:
+        st.markdown("""
+        <div class="section-box">
+            <div class="section-title">📈 Prediction Confidence</div>
+            <div class="section-subtitle">Probability assigned by the Random Forest model.</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-# =========================================================
-# DISCLAIMER & FOOTER
-# =========================================================
+        labels = ["Healthy" if str(c) == "0" else "Unhealthy" for c in model.classes_]
+        fig, ax = plt.subplots(figsize=(7, 3.5))
+        ax.bar(labels, probabilities * 100)
+        ax.set_ylabel("Probability (%)")
+        ax.set_ylim(0, 100)
+        ax.set_title("Model Prediction Probability")
+        ax.grid(axis="y", alpha=0.2)
+        st.pyplot(fig, use_container_width=True)
+        plt.close(fig)
 
-st.markdown(
-    """
-    <div class="disclaimer">
-    ⚠️ <b>Important:</b> This application is developed for educational
-    and machine-learning demonstration purposes. The prediction is not
-    a medical diagnosis and should not replace advice or evaluation
-    from a qualified healthcare professional.
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    """
-    <br>
-    <center>
-        <small style="color: #64748b;">
-        Built with Python • Scikit-learn • Streamlit<br>
-        Health Risk Prediction ML Project
-        </small>
-    </center>
-    """,
-    unsafe_allow_html=True
-)
+# ---------------------------------------------------------
+# FOOTER
+# ---------------------------------------------------------
+st.markdown("""
+<div class="footer">
+    <b>Health Risk Prediction</b> • Supervised Machine Learning Project<br>
+    Built with Python • Pandas • Scikit-learn • Streamlit<br><br>
+    ⚠️ Educational demonstration only — not a medical diagnosis.
+</div>
+""", unsafe_allow_html=True)
